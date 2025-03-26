@@ -1,3 +1,8 @@
+to run dev:
+npx supervisor --no-restart-on error sloniktest.js
+
+http://domain:8993/opinions?subset=%ort%
+
 https://www.npmjs.com/search?q=sql&page=1&perPage=20
 https://www.npmjs.com/search?q=http%20router
 https://nextjs.org/docs/getting-started/project-structure

@@ -1,10 +1,11 @@
 {
-  "type":"module",
+  "type": "module",
   "private": true,
   "scripts": {
     "start": "node bin/server.js"
   },
   "dependencies": {
+    "cors": "^2.8.5",
     "express": "^4.21.2",
     "slonik": "^46.4.0"
   }

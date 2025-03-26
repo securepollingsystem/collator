@@ -1,6 +1,13 @@
 import express from 'express';
 import { createPool, sql } from 'slonik';
 import fs from 'fs';
+import cors from 'cors';
+
+const allowedOrigins = [
+  'http://localhost:8990',
+  'http://demo.securepollingsystem.org',
+  'https://demo.securepollingsystem.org'
+];
 
 var postGresURI = fs.readFileSync('postgres.uri', {encoding: 'utf8'});
 // postgresql://[user[:password]@][host[:port]][/database name][?name=value[&...]]
@@ -10,6 +17,17 @@ const main = async () => {
 
   const app = express();
   const port = 8993;
+
+  app.use(cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('disallowed by cors'));
+      }
+    },
+    credentials: true
+  }));
 
   app.get('/', (req, res) => {
     res.send('Hello, World!')
