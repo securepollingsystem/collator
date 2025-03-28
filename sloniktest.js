@@ -5,8 +5,11 @@ import cors from 'cors';
 
 const allowedOrigins = [
   'http://localhost:8990',
+  'http://10.0.0.8:8990', // wow don't leave a trailing / or it wont work!
   'http://demo.securepollingsystem.org',
-  'https://demo.securepollingsystem.org'
+  'https://demo.securepollingsystem.org',
+  'http://demo.securepollingsystem.com',
+  'https://demo.securepollingsystem.com'
 ];
 
 var postGresURI = fs.readFileSync('postgres.uri', {encoding: 'utf8'});
@@ -41,13 +44,13 @@ const main = async () => {
     if ( req.query.subset ) {
       sqlString = sql.unsafe`SELECT * FROM sps.opinions WHERE OPINION ILIKE ${req.query.subset}`;
       opinions = await pool.any(sqlString);
-      console.log('safe subset query:',sqlString.values);
+      console.log('safe subset query:',sqlString.values,'returned this many items:',opinions.length);
     } else {
       opinions = await pool.any(sql.unsafe`SELECT * FROM sps.opinions`);
     }
     const stringResponse = JSON.stringify(opinions); // , (key, value) => typeof value === 'bigint' ? value.toString() : value);  // https://github.com/GoogleChromeLabs/jsbi/issues/30
     res.setHeader('Content-Type', 'application/json'); // https://stackoverflow.com/questions/19696240/proper-way-to-return-json-using-node-or-express
-    res.send(stringResponse);
+    res.json(opinions);
   });
 
   app.get('/ipv4', (req, res) => {
