@@ -5,6 +5,7 @@ import cors from 'cors';
 
 const allowedOrigins = [
   'http://localhost:8990',
+  'http://localhost:5173',
   'http://10.0.0.8:8990', // wow don't leave a trailing / or it wont work!
   'http://demo.securepollingsystem.org',
   'https://demo.securepollingsystem.org',
@@ -73,4 +74,4 @@ function logAccess(req, addlInfo) {
   return ip;
 }
 
-void main();
+main();
