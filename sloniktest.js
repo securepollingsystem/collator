@@ -5,7 +5,7 @@ import cors from 'cors';
 
 const allowedOrigins = [
   'http://localhost:8990',
-  'http://localhost:5173',
+  'http://10.0.1.122:8990',
   'http://10.0.0.8:8990', // wow don't leave a trailing / or it wont work!
   'http://demo.securepollingsystem.org',
   'https://demo.securepollingsystem.org',
@@ -65,9 +65,9 @@ const main = async () => {
     let encoding = req.headers['content-encoding'];
     let dataBuffer;
     if (encoding === 'gzip') {
-      const zlib = await import('zlib'); // Decompress gzip data
+      const { gunzipSync } = await import('zlib');
       try {
-        dataBuffer = zlib.gunzipSync(rawData);
+        dataBuffer = gunzipSync(rawData);
         logAccess(req, 'Received gzip upload');
       } catch (err) {
         logAccess(req, 'Failed to decompress gzip upload');
@@ -77,7 +77,11 @@ const main = async () => {
       dataBuffer = rawData;
       logAccess(req, 'Received raw upload');
     }
-    console.log('upload-screed:', dataBuffer.toString());
+    if (Buffer.isBuffer(dataBuffer)) {
+      console.log('upload-screed (buffer):', dataBuffer.toString());
+    } else {
+      console.log('upload-screed (non-buffer):', typeof dataBuffer, JSON.stringify(dataBuffer));
+    }
     res.json({ status: 'success', bytesReceived: dataBuffer.length });
   });
 
