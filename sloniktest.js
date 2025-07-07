@@ -2,6 +2,7 @@ import express from 'express';
 import { createPool, sql } from 'slonik';
 import fs from 'fs';
 import cors from 'cors';
+import sodium from 'libsodium-wrappers';
 
 const allowedOrigins = [
   'http://localhost:8990',
@@ -81,6 +82,9 @@ const main = async () => {
       console.log('upload-screed (buffer):', dataBuffer.toString());
     } else {
       console.log('upload-screed (non-buffer):', typeof dataBuffer, JSON.stringify(dataBuffer));
+      if (typeof dataBuffer === 'object' && dataBuffer !== null) {
+        console.log('verifyScreedSignature:', await verifyScreedSignature(dataBuffer));
+      }
     }
     res.json({ status: 'success', bytesReceived: dataBuffer.length });
   });
@@ -98,6 +102,26 @@ function logAccess(req, addlInfo) {
   }
   console.log(Date().slice(0,24),ip, 'asks for',req.url,'using',req.headers['user-agent'],addlInfo);
   return ip;
+}
+
+async function verifyScreedSignature({ screed, signature, publicKey }) {
+  await sodium.ready;
+  //console.log('verifyScreedSignature:', { screed, signature, publicKey });
+  try {
+    const msgUint8 = sodium.from_string(screed);
+    let sigUint8;
+    try {
+      sigUint8 = sodium.from_base64(signature, sodium.base64_variants.URLSAFE_NO_PADDING); // default variant
+    } catch (e) {
+      console.error('Signature base64 decode failed:', e);
+      return false;
+    }
+    const pubKeyUint8 = sodium.from_hex(publicKey);
+    return sodium.crypto_sign_verify_detached(sigUint8, msgUint8, pubKeyUint8);
+  } catch (e) {
+    console.error('Signature verification failed:', e);
+    return false;
+  }
 }
 
 main();
