@@ -59,6 +59,28 @@ const main = async () => {
     return res.json({ message: `Hello! Your IP address is: ${logAccess(req,'')}` });
   });
 
+  app.use(express.json()); // Add JSON body parsing middleware
+  app.post('/upload-screed', express.raw({ type: '*/*', limit: '10mb' }), async (req, res) => {
+    let rawData = req.body;
+    let encoding = req.headers['content-encoding'];
+    let dataBuffer;
+    if (encoding === 'gzip') {
+      const zlib = await import('zlib'); // Decompress gzip data
+      try {
+        dataBuffer = zlib.gunzipSync(rawData);
+        logAccess(req, 'Received gzip upload');
+      } catch (err) {
+        logAccess(req, 'Failed to decompress gzip upload');
+        return res.status(400).json({ error: 'Invalid gzip data' });
+      }
+    } else {
+      dataBuffer = rawData;
+      logAccess(req, 'Received raw upload');
+    }
+    console.log('upload-screed:', dataBuffer.toString());
+    res.json({ status: 'success', bytesReceived: dataBuffer.length });
+  });
+
   app.listen(port, () => {
     console.log(`Example app listening on port ${port}`)
   });
