@@ -15,6 +15,7 @@ const allowedOrigins = [
 ];
 
 var postGresURI = fs.readFileSync('postgres.uri', {encoding: 'utf8'});
+// postgresql://user:password@localhost:5432/spsdata
 // postgresql://[user[:password]@][host[:port]][/database name][?name=value[&...]]
 
 const main = async () => {

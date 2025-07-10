@@ -3,6 +3,12 @@ npx supervisor --no-restart-on error sloniktest.js
 
 http://domain:8993/opinions?subset=%ort%
 
+to enter database: (user spsdata)
+$ psql spsdata
+spsdata=> drop schema sps cascade; # to nuke whole tree of data
+spsdata=> \i sps.sql    # to create tables opinions, screedlines, screeds
+spsdata=> \i db.sql     # to load 25 sample opinions
+
 https://www.npmjs.com/search?q=sql&page=1&perPage=20
 https://www.npmjs.com/search?q=http%20router
 https://nextjs.org/docs/getting-started/project-structure
