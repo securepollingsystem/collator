@@ -4,17 +4,10 @@ import fs from 'fs';
 import cors from 'cors';
 import sodium from 'libsodium-wrappers';
 
-const allowedOrigins = [
-  'http://localhost:8990',
-  'http://10.0.1.122:8990',
-  'http://10.0.0.8:8990', // wow don't leave a trailing / or it wont work!
-  'http://demo.securepollingsystem.org',
-  'https://demo.securepollingsystem.org',
-  'http://demo.securepollingsystem.com',
-  'https://demo.securepollingsystem.com'
-];
+const allowedOrigins = fs.readFileSync('allowedorigins.url', {encoding: 'utf8'}).split('\n').filter(i => i !== '');
+// file full of URLs that are allowed to load from this API, such as http://localhost:8990
 
-var postGresURI = fs.readFileSync('postgres.uri', {encoding: 'utf8'});
+const postGresURI = fs.readFileSync('postgres.uri', {encoding: 'utf8'});
 // postgresql://user:password@localhost:5432/spsdata
 // postgresql://[user[:password]@][host[:port]][/database name][?name=value[&...]]
 
