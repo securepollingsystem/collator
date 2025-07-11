@@ -39,7 +39,7 @@ const main = async () => {
     if ( req.query.subset ) {
       sqlString = sql.unsafe`SELECT * FROM sps.opinions WHERE OPINION ILIKE ${req.query.subset}`;
       opinions = await pool.any(sqlString);
-      logAccess(req,'Safe subset query: '+sqlString.values+' returned this many items: '+opinions.length);
+      //logAccess(req,'Safe subset query: '+sqlString.values+' returned this many items: '+opinions.length);
     } else {
       opinions = await pool.any(sql.unsafe`SELECT * FROM sps.opinions`);
       logAccess(req,'');
@@ -80,7 +80,7 @@ const main = async () => {
         const screedIsSigned = await verifyScreedSignature(dataBuffer);
         console.log('verifyScreedSignature:', screedIsSigned);
         if (screedIsSigned) {
-          console.log('storeScreed:',storeScreed(dataBuffer));
+          console.log('storeScreed:', await storeScreed(dataBuffer));
         }
       }
     }
@@ -114,7 +114,11 @@ function logAccess(req, addlInfo) {
   if (ip.substr(0, 7) == "::ffff:") {
     ip = ip.substr(7)
   }
-  console.log(Date().slice(0,24),ip, 'asks for',req.url,'using',req.headers['user-agent'],addlInfo);
+  const logLine = `${Date().slice(0,24)} ${ip} asks for ${req.url} using ${req.headers['user-agent']} ${addlInfo}`;
+  console.log(logLine);
+  if (req.headers['user-agent'] && req.headers['user-agent'].includes('Palo Alto Networks')) {
+    fs.appendFileSync('scanners.log', logLine + '\n');
+  }
   return ip;
 }
 
