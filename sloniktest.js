@@ -77,7 +77,11 @@ const main = async () => {
     } else {
       console.log('upload-screed (non-buffer):', typeof dataBuffer, JSON.stringify(dataBuffer));
       if (typeof dataBuffer === 'object' && dataBuffer !== null) {
-        console.log('verifyScreedSignature:', await verifyScreedSignature(dataBuffer));
+        const screedIsSigned = await verifyScreedSignature(dataBuffer);
+        console.log('verifyScreedSignature:', screedIsSigned);
+        if (screedIsSigned) {
+          console.log('storeScreed:',storeScreed(dataBuffer));
+        }
       }
     }
     res.json({ status: 'success', bytesReceived: dataBuffer.length });
@@ -86,6 +90,22 @@ const main = async () => {
   app.listen(port, () => {
     console.log(`Example app listening on port ${port}`)
   });
+
+  async function storeScreed(signedScreedObject) {
+    const sqlString = sql.unsafe`
+      INSERT INTO sps.screeds (pubkey, signer_key, sig_expires, modified)
+      VALUES (
+        ${signedScreedObject.publicKey},
+        ${'signer_key'},
+        TO_TIMESTAMP(${1758394589}),
+        NOW()
+      )
+      ON CONFLICT (pubkey)
+      DO UPDATE SET modified = NOW()
+    `; // EXCLUDED.signer_key means the value that was attempted to be inserted into signer_key
+    const response = await pool.any(sqlString);
+    return response;
+  };
 };
 
 function logAccess(req, addlInfo) {
