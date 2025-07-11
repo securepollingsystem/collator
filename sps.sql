@@ -12,8 +12,8 @@ CREATE SCHEMA sps;
 CREATE TABLE sps.screeds (
     pubkey      VARCHAR(64) NOT NULL PRIMARY KEY,
     signer_key  VARCHAR(64) NOT NULL,
-    sig_expires TIMESTAMP NOT NULL,
-    modified    TIMESTAMP NOT NULL
+    sig_expires TIMESTAMPZ NOT NULL,
+    modified    TIMESTAMPZ NOT NULL
 );
 
 -- SELECT * FROM sps.opinions;
@@ -21,7 +21,7 @@ CREATE TABLE sps.opinions (
     id SERIAL PRIMARY KEY,
     opinion TEXT NOT NULL,
     screed_count INTEGER,
-    updated_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    updated_at   TIMESTAMPZ NOT NULL DEFAULT CURRENT_TIMESTAMPZ
 );
 
 CREATE TABLE sps.screedlines (
@@ -31,3 +31,6 @@ CREATE TABLE sps.screedlines (
     FOREIGN KEY (screed_key) REFERENCES sps.screeds(pubkey),
     FOREIGN KEY (opinion_id) REFERENCES sps.opinions(id)
 );
+
+-- This will ensure only one copy of each opinion exists
+ALTER TABLE sps.opinions ADD CONSTRAINT unique_opinion UNIQUE (opinion);

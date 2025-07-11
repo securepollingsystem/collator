@@ -104,6 +104,34 @@ const main = async () => {
       DO UPDATE SET modified = NOW()
     `; // EXCLUDED.signer_key means the value that was attempted to be inserted into signer_key
     const response = await pool.any(sqlString);
+
+    // Delete any existing screedlines for this screed_key and then we will repopulate them
+    await pool.any(sql.unsafe`DELETE FROM sps.screedlines WHERE screed_key = ${signedScreedObject.publicKey}`);
+
+    // For each item in signedScreedObject.screed, check if opinion exists and if not, insert it.  Grab its id.
+    for (const opinionText of JSON.parse(signedScreedObject.screed)) {
+      if (typeof opinionText !== 'string' || !opinionText.trim()) {
+        console.log('Skipping invalid opinion type:', typeof(opinionText), 'value:', opinionText);
+        continue;
+      }
+      const sqlline = sql.unsafe`SELECT id FROM sps.opinions WHERE opinion = ${opinionText}`;
+      // console.log('opinionText:',opinionText,'sqlline:', sqlline.text, sqlline.values);
+      let opinionRow = await pool.maybeOne(sqlline);
+      let opinionId;
+      if (!opinionRow) {
+        const insertResult = await pool.one(sql.unsafe`INSERT INTO sps.opinions (opinion, screed_count) VALUES (${opinionText}, 1) RETURNING id`);
+        if (!insertResult || !insertResult.id) {
+          console.error('Failed to insert opinion:', opinionText, 'insertResult:', insertResult);
+          continue;
+        }
+        opinionId = insertResult.id;
+      } else {
+        opinionId = opinionRow.id;
+      }
+      // Insert into screedlines
+      console.log('Inserting into screedlines:', { screed_key: signedScreedObject.publicKey, opinion_id: opinionId });
+      await pool.any(sql.unsafe`INSERT INTO sps.screedlines (screed_key, opinion_id) VALUES (${signedScreedObject.publicKey}, ${opinionId})`);
+    }
     return response;
   };
 };
