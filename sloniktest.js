@@ -4,6 +4,9 @@ import fs from 'fs';
 import cors from 'cors';
 import sodium from 'libsodium-wrappers';
 
+var lastUpdateOpinionCounts = Date.now(); // when's the last time we checked updated_at in all opinions
+var lastStoreScreed = lastUpdateOpinionCounts + 1000; // when's the last time we stored a new/updated screed
+
 const allowedOrigins = fs.readFileSync('allowedorigins.url', {encoding: 'utf8'}).split('\n').filter(i => i !== '');
 // file full of URLs that are allowed to load from this API, such as http://localhost:8990
 
@@ -37,7 +40,7 @@ const main = async () => {
     var opinions = 'unpopulated';
     var sqlString = 'unpopulated';
     if ( req.query.subset ) {
-      sqlString = sql.unsafe`SELECT * FROM sps.opinions WHERE OPINION ILIKE ${req.query.subset}`;
+      sqlString = sql.unsafe`SELECT * FROM sps.opinions WHERE OPINION ILIKE ${req.query.subset} ORDER BY screed_count DESC`;
       opinions = await pool.any(sqlString);
       //logAccess(req,'Safe subset query: '+sqlString.values+' returned this many items: '+opinions.length);
     } else {
@@ -47,6 +50,19 @@ const main = async () => {
     const stringResponse = JSON.stringify(opinions); // , (key, value) => typeof value === 'bigint' ? value.toString() : value);  // https://github.com/GoogleChromeLabs/jsbi/issues/30
     res.setHeader('Content-Type', 'application/json'); // https://stackoverflow.com/questions/19696240/proper-way-to-return-json-using-node-or-express
     res.json(opinions);
+  });
+
+  app.get('/test', async (req, res) => {
+    var opinionsToUpdate;
+    if (lastUpdateOpinionCounts < lastStoreScreed) { // compare the last time updateOpinionCounts ran to the most recent storeScreed time
+      const newestScreedTimeObj = await pool.any(sql.unsafe`SELECT MAX(modified) FROM sps.screeds`); // get timestamp of newest record in sps.screeds modified
+      const newestScreedTime = newestScreedTimeObj[0].max; // just the unixtime value (in milliseconds)
+      opinionsToUpdate = await pool.any(sql.unsafe`SELECT id FROM sps.opinions WHERE updated_at < TO_TIMESTAMP(${newestScreedTime})`); // find out if any sps.opinions were updated_at older value than newest screed
+      if (opinionsToUpdate.length > 0) { // if there are opinions that needs to be updated
+        updateOpinionCounts(opinionsToUpdate);
+      }
+    }
+    return res.json({ opinionsToUpdate }); // {"opinionsToUpdate":[{"id":32},{"id":33},{"id":34},{"id":35},{"id":36},{"id":37}]}
   });
 
   app.get('/ipv4', (req, res) => {
@@ -80,6 +96,7 @@ const main = async () => {
         const screedIsSigned = await verifyScreedSignature(dataBuffer);
         console.log('verifyScreedSignature:', screedIsSigned);
         if (screedIsSigned) {
+          lastStoreScreed = Date.now(); // update time when this last happened
           console.log('storeScreed:', await storeScreed(dataBuffer));
         }
       }
@@ -128,12 +145,23 @@ const main = async () => {
       } else {
         opinionId = opinionRow.id;
       }
-      // Insert into screedlines
-      console.log('Inserting into screedlines:', { screed_key: signedScreedObject.publicKey, opinion_id: opinionId });
+      //console.log('Inserting into screedlines:', { screed_key: signedScreedObject.publicKey, opinion_id: opinionId });
       await pool.any(sql.unsafe`INSERT INTO sps.screedlines (screed_key, opinion_id) VALUES (${signedScreedObject.publicKey}, ${opinionId})`);
     }
     return response;
   };
+
+  function updateOpinionCounts(opinionsToUpdate) {
+    lastUpdateOpinionCounts = Date.now(); // record when this last happened
+    opinionsToUpdate.map(async (opinion) => { // get a list of ids in sps.opinions and run a for loop (map) on that
+      const screedCountObj = await pool.any(sql.unsafe`SELECT COUNT(*) FROM sps.screedlines WHERE opinion_id = ${opinion.id}`);
+      const screedCount = screedCountObj[0].count; // how many screeds hold this opinion
+      console.log('id:',opinion.id,'screedCount:',screedCount); // type bigint
+      await pool.any(sql.unsafe`UPDATE sps.opinions SET screed_count = ${screedCount}, updated_at = NOW() WHERE id = ${opinion.id}`); // set screed_count and updated_at
+    })
+  }
+
+  // setinterval to run updateOpinionCounts ??
 };
 
 function logAccess(req, addlInfo) {
