@@ -52,19 +52,6 @@ const main = async () => {
     res.json(opinions);
   });
 
-  app.get('/test', async (req, res) => {
-    var opinionsToUpdate;
-    if (lastUpdateOpinionCounts < lastStoreScreed) { // compare the last time updateOpinionCounts ran to the most recent storeScreed time
-      const newestScreedTimeObj = await pool.any(sql.unsafe`SELECT MAX(modified) FROM sps.screeds`); // get timestamp of newest record in sps.screeds modified
-      const newestScreedTime = newestScreedTimeObj[0].max; // just the unixtime value (in milliseconds)
-      opinionsToUpdate = await pool.any(sql.unsafe`SELECT id FROM sps.opinions WHERE updated_at < TO_TIMESTAMP(${newestScreedTime})`); // find out if any sps.opinions were updated_at older value than newest screed
-      if (opinionsToUpdate.length > 0) { // if there are opinions that needs to be updated
-        updateOpinionCounts(opinionsToUpdate);
-      }
-    }
-    return res.json({ opinionsToUpdate }); // {"opinionsToUpdate":[{"id":32},{"id":33},{"id":34},{"id":35},{"id":36},{"id":37}]}
-  });
-
   app.get('/ipv4', (req, res) => {
     console.log(req);
     return res.json({ message: `Hello! Your IP address is: ${logAccess(req,'')}` });
@@ -89,15 +76,16 @@ const main = async () => {
       logAccess(req, 'Received raw upload');
     }
     if (Buffer.isBuffer(dataBuffer)) {
-      console.log('upload-screed (buffer):', dataBuffer.toString());
+      console.log('ERROR: upload-screed (buffer):', dataBuffer.toString());
     } else {
       console.log('upload-screed (non-buffer):', typeof dataBuffer, JSON.stringify(dataBuffer));
       if (typeof dataBuffer === 'object' && dataBuffer !== null) {
         const screedIsSigned = await verifyScreedSignature(dataBuffer);
-        console.log('verifyScreedSignature:', screedIsSigned);
         if (screedIsSigned) {
+          await storeScreed(dataBuffer);
           lastStoreScreed = Date.now(); // update time when this last happened
-          console.log('storeScreed:', await storeScreed(dataBuffer));
+        } else {
+          console.log('verifyScreedSignature failed:', screedIsSigned);
         }
       }
     }
@@ -151,17 +139,29 @@ const main = async () => {
     return response;
   };
 
+  async function maybeUpdateOpinionCounts() { // run updateOpinionCounts if needed
+    if (lastUpdateOpinionCounts < lastStoreScreed) { // compare the last time updateOpinionCounts ran to the most recent storeScreed time
+      const newestScreedTimeObj = await pool.any(sql.unsafe`SELECT MAX(modified) FROM sps.screeds`); // get timestamp of newest record in sps.screeds modified
+      const newestScreedTime = newestScreedTimeObj[0].max; // just the unixtime value (in milliseconds)
+      const opinionsToUpdate = await pool.any(sql.unsafe`SELECT id FROM sps.opinions WHERE updated_at < TO_TIMESTAMP(${newestScreedTime})`); // find out if any sps.opinions were updated_at older value than newest screed
+      if (opinionsToUpdate.length > 0) { // if there are opinions that needs to be updated
+        updateOpinionCounts(opinionsToUpdate);
+      }
+    }
+  };
+
   function updateOpinionCounts(opinionsToUpdate) {
     lastUpdateOpinionCounts = Date.now(); // record when this last happened
     opinionsToUpdate.map(async (opinion) => { // get a list of ids in sps.opinions and run a for loop (map) on that
       const screedCountObj = await pool.any(sql.unsafe`SELECT COUNT(*) FROM sps.screedlines WHERE opinion_id = ${opinion.id}`);
       const screedCount = screedCountObj[0].count; // how many screeds hold this opinion
-      console.log('id:',opinion.id,'screedCount:',screedCount); // type bigint
       await pool.any(sql.unsafe`UPDATE sps.opinions SET screed_count = ${screedCount}, updated_at = NOW() WHERE id = ${opinion.id}`); // set screed_count and updated_at
     })
+    const logLine = `${Date().slice(0,24)} updateOpinionCounts`;
+    console.log(logLine);
   }
 
-  // setinterval to run updateOpinionCounts ??
+  const maybeUpdater = setInterval(maybeUpdateOpinionCounts, 1000);
 };
 
 function logAccess(req, addlInfo) {
