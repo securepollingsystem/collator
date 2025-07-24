@@ -34,12 +34,14 @@ const main = async () => {
   app.get('/', async (req, res) => {
     const ip = logAccess(req,'');
     var scanner = 0;
-    await Promise.all(['35.203.210','35.203.211','162.216.149','162.216.150','198.235.24','205.210.31','147.185.132','147.185.133']
+    await Promise.all(['35.203.210.','35.203.211.','162.216.149.','162.216.150.','198.235.24.','205.210.31.','147.185.132.','147.185.133.']
       .filter(d => ip.match(d) != null)
       .map(async function (d) {
-        scanner += 1;
+        if (ip.match(d)['index'] == 0) {
+          scanner += 1;
+          console.log('scanner:',ip);
+        }
       }));
-    console.log('scanner:',ip);
     if (scanner == 0) {
       res.send('Hello, World!');
     }; // otherwise just ignore them
