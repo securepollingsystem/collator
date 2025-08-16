@@ -49,13 +49,13 @@ const main = async () => {
   app.get('/opinions', async (req, res) => {
     var opinions = 'unpopulated';
     var sqlString = 'unpopulated';
-    if ( req.query.subset ) {
+    if ( req.query.subset ) { // '?subset=' returns false here
       const search_value = '%' + decodeURIComponent(req.query.subset) + '%'
       sqlString = sql.unsafe`SELECT * FROM sps.opinions WHERE OPINION ILIKE ${search_value} ORDER BY screed_count DESC`;
       opinions = await pool.any(sqlString);
       logAccess(req,'Safe subset query: '+sqlString.values+' returned this many items: '+opinions.length);
     } else {
-      opinions = await pool.any(sql.unsafe`SELECT * FROM sps.opinions`);
+      opinions = await pool.any(sql.unsafe`SELECT * FROM sps.opinions ORDER BY screed_count DESC`);
       logAccess(req,'no subset, returned this many items: '+opinions.length);
     }
     const stringResponse = JSON.stringify(opinions); // , (key, value) => typeof value === 'bigint' ? value.toString() : value);  // https://github.com/GoogleChromeLabs/jsbi/issues/30
