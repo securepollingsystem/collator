@@ -39,7 +39,6 @@ const main = async () => {
       .map(async function (d) {
         if (ip.match(d)['index'] == 0) {
           scanner += 1;
-          console.log('scanner:',ip);
         }
       }));
     if (scanner == 0) {
@@ -51,12 +50,13 @@ const main = async () => {
     var opinions = 'unpopulated';
     var sqlString = 'unpopulated';
     if ( req.query.subset ) {
-      sqlString = sql.unsafe`SELECT * FROM sps.opinions WHERE OPINION ILIKE ${req.query.subset} ORDER BY screed_count DESC`;
+      const search_value = '%' + decodeURIComponent(req.query.subset) + '%'
+      sqlString = sql.unsafe`SELECT * FROM sps.opinions WHERE OPINION ILIKE ${search_value} ORDER BY screed_count DESC`;
       opinions = await pool.any(sqlString);
-      //logAccess(req,'Safe subset query: '+sqlString.values+' returned this many items: '+opinions.length);
+      logAccess(req,'Safe subset query: '+sqlString.values+' returned this many items: '+opinions.length);
     } else {
       opinions = await pool.any(sql.unsafe`SELECT * FROM sps.opinions`);
-      logAccess(req,'');
+      logAccess(req,'no subset, returned this many items: '+opinions.length);
     }
     const stringResponse = JSON.stringify(opinions); // , (key, value) => typeof value === 'bigint' ? value.toString() : value);  // https://github.com/GoogleChromeLabs/jsbi/issues/30
     res.setHeader('Content-Type', 'application/json'); // https://stackoverflow.com/questions/19696240/proper-way-to-return-json-using-node-or-express
