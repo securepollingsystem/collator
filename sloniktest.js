@@ -89,7 +89,7 @@ const main = async () => {
     if (Buffer.isBuffer(dataBuffer)) {
       console.log('ERROR: upload-screed (buffer):', dataBuffer.toString());
     } else {
-      console.log('upload-screed (non-buffer):', typeof dataBuffer, JSON.stringify(dataBuffer.screed));
+      console.log('upload-screed (non-buffer):', typeof dataBuffer, JSON.stringify(dataBuffer));
       if (typeof dataBuffer === 'object' && dataBuffer !== null) {
         const screedIsSigned = await verifyScreedSignature(dataBuffer);
         if (screedIsSigned) {
