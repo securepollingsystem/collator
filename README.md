@@ -6,8 +6,8 @@ http://domain:8993/opinions?subset=%ort%
 to enter database: (user spsdata)
 $ psql spsdata
 spsdata=> drop schema sps cascade; # to nuke whole tree of data
-spsdata=> \i sps.sql    # to create tables opinions, screedlines, screeds
-spsdata=> \i db.sql     # to load 25 sample opinions
+spsdata=> \i sps.sql    # to create a schema called "sps" with tables: opinions, screedlines, screeds
+spsdata=> \i db.sql     # to load 25 sample opinions into sps.opinions
 
 https://www.npmjs.com/search?q=sql&page=1&perPage=20
 https://www.npmjs.com/search?q=http%20router
